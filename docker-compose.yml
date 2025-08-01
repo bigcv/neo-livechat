@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # API Backend Service
+  api:
+    build:
+      context: .
+      target: dev
+    container_name: chat_api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=chatapp
+      - DB_PASSWORD=secretpassword123
+      - DB_NAME=chatplatform
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chatnet
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: chat_postgres
+    environment:
+      - POSTGRES_USER=chatapp
+      - POSTGRES_PASSWORD=secretpassword123
+      - POSTGRES_DB=chatplatform
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - chatnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatapp -d chatplatform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for real-time features and caching
+  redis:
+    image: redis:7-alpine
+    container_name: chat_redis
+    command: redis-server --appendonly yes --requirepass redispassword123
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - chatnet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "redispassword123", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin for database management (optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: chat_pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@chatplatform.com
+      - PGADMIN_DEFAULT_PASSWORD=pgadmin123
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    ports:
+      - "5050:80"
+    networks:
+      - chatnet
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    profiles:
+      - tools
+
+networks:
+  chatnet:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
