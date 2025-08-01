@@ -1,62 +1,242 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const { createServer } = require('http');
 const WebSocket = require('ws');
+const { v4: uuidv4 } = require('uuid');
 
+// Initialize Express app
 const app = express();
 const server = createServer(app);
-const wss = new WebSocket.Server({ server });
+
+// Initialize WebSocket server
+const wss = new WebSocket.Server({ 
+  server,
+  path: '/ws'
+});
 
 // Middleware
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'", "ws:", "wss:"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
+
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+  credentials: true
+}));
+
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
+
+// Store active WebSocket connections
+const connections = new Map();
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy',
-    service: 'Neo Live Chat API',
-    timestamp: new Date().toISOString()
+    service: 'AI Chat Platform API',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV,
+    connections: connections.size
   });
 });
 
-// Basic chat endpoint (we'll expand this)
-app.post('/api/chat', async (req, res) => {
-  const { message, sessionId } = req.body;
-  
-  // For now, echo back (we'll add AI later)
+// API info endpoint
+app.get('/api', (req, res) => {
   res.json({
-    response: `Echo: ${message}`,
-    sessionId: sessionId || 'demo-session',
-    timestamp: new Date().toISOString()
+    name: 'NEO LiveChat',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      chat: '/api/chat',
+      widget: '/api/widget/config',
+      websocket: 'ws://localhost:3000/ws'
+    }
   });
 });
 
-// WebSocket connection for real-time chat
-wss.on('connection', (ws) => {
-  console.log('New WebSocket connection');
-  
-  ws.on('message', (message) => {
-    console.log('Received:', message.toString());
+// Chat endpoint (REST fallback)
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message, sessionId, customerId } = req.body;
     
-    // Echo the message back (we'll add AI processing later)
-    ws.send(JSON.stringify({
-      type: 'response',
-      message: `Echo: ${message}`,
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    
+    // For now, echo the message (we'll integrate AI later)
+    const response = {
+      id: uuidv4(),
+      sessionId: sessionId || uuidv4(),
+      customerId: customerId || 'anonymous',
+      message: message,
+      response: `Echo: ${message}`,
       timestamp: new Date().toISOString()
-    }));
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Widget configuration endpoint
+app.get('/api/widget/config', (req, res) => {
+  const { customerId } = req.query;
+  
+  res.json({
+    customerId: customerId || 'demo',
+    theme: {
+      primaryColor: '#0066cc',
+      position: 'bottom-right',
+      greeting: 'Hi! How can I help you today?'
+    },
+    features: {
+      fileUpload: false,
+      emoji: true,
+      typing: true,
+      sound: true
+    }
+  });
+});
+
+// WebSocket connection handling
+wss.on('connection', (ws, req) => {
+  const connectionId = uuidv4();
+  console.log(`New WebSocket connection: ${connectionId}`);
+  
+  // Store connection
+  connections.set(connectionId, {
+    ws,
+    sessionId: null,
+    customerId: null,
+    connected: new Date()
   });
   
-  ws.on('close', () => {
-    console.log('Client disconnected');
+  // Send welcome message
+  ws.send(JSON.stringify({
+    type: 'connected',
+    connectionId,
+    timestamp: new Date().toISOString()
+  }));
+  
+  // Handle incoming messages
+  ws.on('message', async (data) => {
+    try {
+      const message = JSON.parse(data.toString());
+      console.log(`Message from ${connectionId}:`, message);
+      
+      switch (message.type) {
+        case 'init':
+          // Initialize session
+          connections.get(connectionId).sessionId = message.sessionId || uuidv4();
+          connections.get(connectionId).customerId = message.customerId;
+          
+          ws.send(JSON.stringify({
+            type: 'initialized',
+            sessionId: connections.get(connectionId).sessionId,
+            timestamp: new Date().toISOString()
+          }));
+          break;
+          
+        case 'message':
+          // Handle chat message
+          const responseMessage = {
+            type: 'message',
+            id: uuidv4(),
+            message: `Echo: ${message.content}`,
+            timestamp: new Date().toISOString()
+          };
+          
+          // Simulate typing indicator
+          ws.send(JSON.stringify({
+            type: 'typing',
+            isTyping: true
+          }));
+          
+          // Simulate response delay
+          setTimeout(() => {
+            ws.send(JSON.stringify({
+              type: 'typing',
+              isTyping: false
+            }));
+            ws.send(JSON.stringify(responseMessage));
+          }, 1000);
+          break;
+          
+        case 'ping':
+          ws.send(JSON.stringify({ type: 'pong' }));
+          break;
+          
+        default:
+          console.log('Unknown message type:', message.type);
+      }
+    } catch (error) {
+      console.error('WebSocket message error:', error);
+      ws.send(JSON.stringify({
+        type: 'error',
+        error: 'Invalid message format'
+      }));
+    }
   });
+  
+  // Handle disconnection
+  ws.on('close', () => {
+    console.log(`WebSocket disconnected: ${connectionId}`);
+    connections.delete(connectionId);
+  });
+  
+  // Handle errors
+  ws.on('error', (error) => {
+    console.error(`WebSocket error for ${connectionId}:`, error);
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Global error:', err);
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Something went wrong!' 
+      : err.message
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
 });
 
 // Start server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Neo LiveChat running on port ${PORT}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`
+🚀 LiveChat API is running!
+📍 HTTP: http://localhost:${PORT}
+📍 WebSocket: ws://localhost:${PORT}/ws
+📍 Health: http://localhost:${PORT}/health
+🌍 Environment: ${process.env.NODE_ENV || 'development'}
+  `);
 });
