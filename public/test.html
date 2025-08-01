@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neo LiveChat Widget Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f9fafb;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    
+    .header h1 {
+      font-size: 48px;
+      margin: 0;
+      background: linear-gradient(135deg, #0066cc, #0052a3);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 800;
+    }
+    
+    .header p {
+      font-size: 20px;
+      color: #6b7280;
+      margin-top: 16px;
+    }
+    
+    .demo-section {
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 40px;
+    }
+    
+    .demo-section h2 {
+      font-size: 28px;
+      margin: 0 0 24px 0;
+      color: #111827;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+      margin-top: 32px;
+    }
+    
+    .feature-card {
+      padding: 24px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+    
+    .feature-card h3 {
+      font-size: 18px;
+      margin: 0 0 8px 0;
+      color: #111827;
+    }
+    
+    .feature-card p {
+      color: #6b7280;
+      margin: 0;
+      line-height: 1.5;
+    }
+    
+    .code-block {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 24px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #d1fae5;
+      color: #065f46;
+      border-radius: 24px;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+    
+    .status-indicator::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    .integration-options {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    
+    .option-card {
+      flex: 1;
+      padding: 20px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .option-card:hover {
+      border-color: #0066cc;
+      transform: translateY(-2px);
+    }
+    
+    .option-card h4 {
+      margin: 0 0 8px 0;
+      color: #111827;
+    }
+    
+    .option-card p {
+      margin: 0;
+      color: #6b7280;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Neo LiveChat</h1>
+      <p>AI-Powered Customer Support Widget</p>
+    </div>
+
+    <div class="demo-section">
+      <div class="status-indicator">Widget Active</div>
+      <h2>Test the Live Chat Widget</h2>
+      <p>Click the chat button in the bottom-right corner to start a conversation. This is exactly what your customers will see on their websites.</p>
+      
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>🚀 Real-time Messaging</h3>
+          <p>Instant message delivery using WebSocket connections</p>
+        </div>
+        <div class="feature-card">
+          <h3>🎨 Customizable Design</h3>
+          <p>Match your brand with custom colors and positioning</p>
+        </div>
+        <div class="feature-card">
+          <h3>📱 Mobile Responsive</h3>
+          <p>Works perfectly on all devices and screen sizes</p>
+        </div>
+        <div class="feature-card">
+          <h3>🤖 AI-Ready</h3>
+          <p>Built to integrate with OpenAI or Claude for smart responses</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Integration Code</h2>
+      <p>Add Neo LiveChat to any website with just one line of code:</p>
+      
+      <div class="code-block">
+&lt;!-- Neo LiveChat Widget --&gt;
+&lt;script 
+  src="http://localhost:3000/widget/embed.js" 
+  data-customer-id="demo"
+  data-position="bottom-right"
+  data-primary-color="#0066cc"
+  async&gt;
+&lt;/script&gt;
+      </div>
+
+      <div class="integration-options">
+        <div class="option-card">
+          <h4>WordPress</h4>
+          <p>Add to theme footer or use plugin</p>
+        </div>
+        <div class="option-card">
+          <h4>React/Next.js</h4>
+          <p>Import as component or add to _document</p>
+        </div>
+        <div class="option-card">
+          <h4>Static HTML</h4>
+          <p>Paste before closing &lt;/body&gt; tag</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Configuration Options</h2>
+      <p>Customize the widget behavior with data attributes:</p>
+      
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>data-customer-id</h3>
+          <p>Your unique customer identifier</p>
+        </div>
+        <div class="feature-card">
+          <h3>data-position</h3>
+          <p>bottom-right, bottom-left, top-right, top-left</p>
+        </div>
+        <div class="feature-card">
+          <h3>data-primary-color</h3>
+          <p>Hex color code for branding</p>
+        </div>
+        <div class="feature-card">
+          <h3>data-api-url</h3>
+          <p>Custom API endpoint (for self-hosted)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Neo LiveChat Widget -->
+  <script 
+    src="http://localhost:3000/widget/embed.js" 
+    data-customer-id="demo"
+    data-position="bottom-right"
+    data-primary-color="#0066cc"
+    async>
+  </script>
+</body>
+</html>

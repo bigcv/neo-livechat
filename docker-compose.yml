@@ -23,6 +23,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ./src:/app/src
+      - ./public:/app/public
       - ./package.json:/app/package.json
       - ./package-lock.json:/app/package-lock.json
       - /app/node_modules
@@ -48,7 +49,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - chatnet
     restart: unless-stopped

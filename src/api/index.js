@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const path = require('path');
 const { createServer } = require('http');
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
@@ -32,7 +33,7 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+  origin: true, // Allow all origins for widget
   credentials: true
 }));
 
@@ -46,6 +47,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve static files - IMPORTANT: Add these lines
+app.use('/widget', express.static(path.join(__dirname, '../../src/client/widget')));
+app.use('/widget', express.static(path.join(__dirname, '../../public/widget')));
+app.use(express.static(path.join(__dirname, '../../public')));
+
 // Store active WebSocket connections
 const connections = new Map();
 
@@ -53,7 +59,7 @@ const connections = new Map();
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy',
-    service: 'AI Chat Platform API',
+    service: 'Neo Live Chat API',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
@@ -65,12 +71,11 @@ app.get('/health', (req, res) => {
 // API info endpoint
 app.get('/api', (req, res) => {
   res.json({
-    name: 'NEO LiveChat',
+    name: 'Neo LiveChat API',
     version: '1.0.0',
     endpoints: {
       health: '/health',
       chat: '/api/chat',
-      widget: '/api/widget/config',
       websocket: 'ws://localhost:3000/ws'
     }
   });
@@ -121,6 +126,24 @@ app.get('/api/widget/config', (req, res) => {
     }
   });
 });
+
+// Temporary explicit route for test.html
+app.get('/test.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../public/test.html'));
+});
+
+// Debug route - TEMPORARY
+app.get('/debug', (req, res) => {
+  const publicPath = path.join(__dirname, '../../public');
+  res.json({
+    __dirname: __dirname,
+    publicPath: publicPath,
+    exists: require('fs').existsSync(publicPath),
+    testHtmlExists: require('fs').existsSync(path.join(publicPath, 'test.html'))
+  });
+});
+
+
 
 // WebSocket connection handling
 wss.on('connection', (ws, req) => {
@@ -233,10 +256,11 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`
-🚀 LiveChat API is running!
+🚀 Neo LiveChat API is running!
 📍 HTTP: http://localhost:${PORT}
 📍 WebSocket: ws://localhost:${PORT}/ws
 📍 Health: http://localhost:${PORT}/health
+📍 Test Page: http://localhost:${PORT}/test.html
 🌍 Environment: ${process.env.NODE_ENV || 'development'}
   `);
 });
