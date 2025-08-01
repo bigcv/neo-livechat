@@ -117,7 +117,7 @@ CREATE TRIGGER update_widget_configs_updated_at BEFORE UPDATE ON widget_configs
 
 -- Insert demo customer
 INSERT INTO customers (name, email, plan) 
-VALUES ('Demo Company', 'demo@example.com', 'free')
+VALUES ('Customer demo', 'demo@example.com', 'free')
 ON CONFLICT (email) DO NOTHING;
 
 -- Insert demo user

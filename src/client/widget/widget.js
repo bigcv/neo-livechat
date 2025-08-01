@@ -62,7 +62,7 @@
           </div>
 
           <!-- Input Area -->
-          <form id="neo-chat-form" class="neo-chat-form">
+          <form id="neo-chat-form" class="neo-chat-form" onsubmit="return false;">
             <div class="neo-input-container">
               <input 
                 type="text" 
@@ -72,7 +72,7 @@
                 autocomplete="off"
                 required
               />
-              <button type="submit" class="neo-send-button" aria-label="Send message">
+              <button type="button" class="neo-send-button" id="neo-send-button" aria-label="Send message">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                   <path d="M2 10L8 4V7.5H12C14.21 7.5 16 9.29 16 11.5V14.5L15 13.5C14.17 12.67 13.04 12.17 11.85 12.17H8V15.5L2 10Z" fill="currentColor" transform="rotate(-45 10 10)"/>
                 </svg>
@@ -397,15 +397,18 @@
 
     ws = new WebSocket(config.wsUrl);
 
-    ws.onopen = () => {
+  ws.onopen = () => {
       console.log('Neo LiveChat: Connected to server');
       reconnectAttempts = 0;
       
-      // Send init message
+      const visitorId = getVisitorId();
+      console.log('Neo LiveChat: Using visitor ID', visitorId);
+      
+      // Send init message with persistent visitor ID
       ws.send(JSON.stringify({
         type: 'init',
         customerId: config.customerId,
-        sessionId: sessionId || generateSessionId()
+        sessionId: visitorId
       }));
     };
 
@@ -435,6 +438,21 @@
     switch(data.type) {
       case 'initialized':
         sessionId = data.sessionId;
+        console.log('Neo LiveChat: Session initialized', sessionId);
+        console.log('Neo LiveChat: History received', data.history ? data.history.length + ' messages' : 'no history');
+        
+        // Load chat history if available
+        if (data.history && data.history.length > 0) {
+          // Clear default greeting if we have history
+          const messagesContainer = document.getElementById('neo-messages');
+          messagesContainer.innerHTML = '';
+          
+          // Add historical messages
+          data.history.forEach(msg => {
+            const sender = msg.senderType === 'visitor' ? 'user' : 'bot';
+            addMessage(msg.content, sender, new Date(msg.timestamp));
+          });
+        }
         break;
       
       case 'message':
@@ -459,12 +477,14 @@
   }
 
   // Add message to chat
-  function addMessage(text, sender) {
+  function addMessage(text, sender, timestamp = new Date()) {
     const messagesContainer = document.getElementById('neo-messages');
     const messageElement = document.createElement('div');
     messageElement.className = `neo-message neo-message-${sender}`;
     
-    const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    const time = timestamp instanceof Date 
+      ? timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+      : new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     
     messageElement.innerHTML = `
       <div class="neo-message-content">${escapeHtml(text)}</div>
@@ -550,9 +570,18 @@
     return div.innerHTML;
   }
 
-  // Generate session ID
-  function generateSessionId() {
-    return 'session_' + Math.random().toString(36).substr(2, 9);
+// Generate or retrieve visitor ID
+  function getVisitorId() {
+    // Try to get existing visitor ID from localStorage (persists across refreshes)
+    let visitorId = localStorage.getItem('neo-livechat-visitor-id');
+    
+    if (!visitorId) {
+      // Generate new visitor ID
+      visitorId = 'visitor_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+      localStorage.setItem('neo-livechat-visitor-id', visitorId);
+    }
+    
+    return visitorId;
   }
 
   // Initialize widget
@@ -571,8 +600,8 @@
     document.getElementById('neo-chat-button').addEventListener('click', toggleChat);
     document.getElementById('neo-close-button').addEventListener('click', toggleChat);
     
-    // Handle form submission
-    document.getElementById('neo-chat-form').addEventListener('submit', (e) => {
+    // Handle send button click
+    document.getElementById('neo-send-button').addEventListener('click', (e) => {
       e.preventDefault();
       const input = document.getElementById('neo-message-input');
       const message = input.value.trim();
@@ -583,11 +612,19 @@
       }
     });
 
-    // Handle enter key
-    document.getElementById('neo-message-input').addEventListener('keypress', (e) => {
+    // Handle enter key - simplified
+    document.getElementById('neo-message-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        document.getElementById('neo-chat-form').dispatchEvent(new Event('submit'));
+        e.stopPropagation();
+        
+        const input = e.target;
+        const message = input.value.trim();
+        
+        if (message) {
+          sendMessage(message);
+          input.value = '';
+        }
       }
     });
 
