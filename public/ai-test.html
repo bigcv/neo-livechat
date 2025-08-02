@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neo LiveChat - AI Response Testing</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f3f4f6;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      color: #111827;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+    }
+    
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+      font-size: 1.1rem;
+    }
+    
+    .test-section {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    h2 {
+      color: #111827;
+      margin-bottom: 20px;
+      font-size: 1.5rem;
+    }
+    
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .test-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .test-card:hover {
+      border-color: #0066cc;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .test-card h3 {
+      color: #111827;
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+    }
+    
+    .test-examples {
+      color: #6b7280;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    
+    .test-input {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    #testMessage {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    #testMessage:focus {
+      border-color: #0066cc;
+    }
+    
+    #testButton {
+      padding: 12px 24px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    #testButton:hover {
+      background: #0052a3;
+    }
+    
+    .response-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      min-height: 100px;
+    }
+    
+    .response-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .meta-item {
+      text-align: center;
+    }
+    
+    .meta-label {
+      color: #6b7280;
+      font-size: 0.85rem;
+      margin-bottom: 5px;
+    }
+    
+    .meta-value {
+      color: #111827;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    
+    .intent-matched { color: #10b981; }
+    .intent-faq { color: #3b82f6; }
+    .intent-contextual { color: #8b5cf6; }
+    .intent-fallback { color: #f59e0b; }
+    
+    .sentiment-positive { color: #10b981; }
+    .sentiment-negative { color: #ef4444; }
+    .sentiment-urgent { color: #dc2626; }
+    .sentiment-neutral { color: #6b7280; }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    
+    .stat-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #0066cc;
+      margin-bottom: 5px;
+    }
+    
+    .stat-label {
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+    
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    
+    .loading {
+      color: #6b7280;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 Neo LiveChat AI Testing</h1>
+    <p class="subtitle">Test the AI responses and see how the intelligent chat system works</p>
+    
+    <div class="test-section">
+      <h2>Quick Test Examples</h2>
+      <div class="test-grid">
+        <div class="test-card" data-message="Hi there!">
+          <h3>👋 Greetings</h3>
+          <div class="test-examples">
+            Try: "Hi", "Hello", "Good morning", "Hey there"
+          </div>
+        </div>
+        
+        <div class="test-card" data-message="What are your pricing plans?">
+          <h3>💰 Pricing</h3>
+          <div class="test-examples">
+            Try: "How much does it cost?", "Pricing", "Free trial"
+          </div>
+        </div>
+        
+        <div class="test-card" data-message="What features do you offer?">
+          <h3>✨ Features</h3>
+          <div class="test-examples">
+            Try: "Features", "What can you do?", "Integrations"
+          </div>
+        </div>
+        
+        <div class="test-card" data-message="I need help with installation">
+          <h3>🛠️ Technical</h3>
+          <div class="test-examples">
+            Try: "Not working", "Error", "How to install"
+          </div>
+        </div>
+        
+        <div class="test-card" data-message="How do I reset my password?">
+          <h3>🔐 Account</h3>
+          <div class="test-examples">
+            Try: "Forgot password", "Login issues", "Reset account"
+          </div>
+        </div>
+        
+        <div class="test-card" data-message="I want to speak to a human">
+          <h3>🤝 Human Agent</h3>
+          <div class="test-examples">
+            Try: "Human agent", "Talk to someone", "Customer service"
+          </div>
+        </div>
+      </div>
+      
+      <h2>Custom Test</h2>
+      <div class="test-input">
+        <input type="text" id="testMessage" placeholder="Type any message to test AI response..." />
+        <button id="testButton">Test Response</button>
+      </div>
+      
+      <div class="response-box">
+        <div id="responseText" class="loading">Response will appear here...</div>
+        <div class="response-meta" id="responseMeta" style="display: none;">
+          <div class="meta-item">
+            <div class="meta-label">Intent</div>
+            <div class="meta-value" id="intentValue">-</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Confidence</div>
+            <div class="meta-value" id="confidenceValue">-</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Sentiment</div>
+            <div class="meta-value" id="sentimentValue">-</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Needs Human</div>
+            <div class="meta-value" id="needsHumanValue">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h2>AI Capabilities</h2>
+      <div class="stats-grid" id="aiStats">
+        <div class="stat-card">
+          <div class="stat-value">-</div>
+          <div class="stat-label">Intent Patterns</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">-</div>
+          <div class="stat-label">FAQ Topics</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">-</div>
+          <div class="stat-label">Small Talk Patterns</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">24/7</div>
+          <div class="stat-label">Availability</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h2>How It Works</h2>
+      <p style="margin-bottom: 20px;">The AI uses pattern matching and intent detection to provide intelligent responses:</p>
+      
+      <pre>
+1. Intent Detection: Matches user message against predefined patterns
+2. FAQ Search: Looks for keyword matches in frequently asked questions
+3. Small Talk: Handles casual conversation
+4. Context Awareness: Considers conversation history
+5. Sentiment Analysis: Detects urgent or negative messages
+6. Human Handoff: Identifies when human intervention is needed
+      </pre>
+    </div>
+  </div>
+  
+  <!-- Neo LiveChat Widget -->
+  <script 
+    src="http://localhost:3000/widget/embed.js" 
+    data-customer-id="demo"
+    data-position="bottom-right"
+    data-primary-color="#0066cc"
+    async>
+  </script>
+  
+  <script>
+    // Test a message
+    function testMessage(message) {
+      document.getElementById('testMessage').value = message;
+      sendTestMessage();
+    }
+    
+    // Send test message
+    async function sendTestMessage() {
+      const message = document.getElementById('testMessage').value.trim();
+      if (!message) return;
+      
+      const responseDiv = document.getElementById('responseText');
+      const metaDiv = document.getElementById('responseMeta');
+      
+      responseDiv.innerHTML = '<span class="loading">Generating AI response...</span>';
+      metaDiv.style.display = 'none';
+      
+      try {
+        const response = await fetch('http://localhost:3000/api/ai/test', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ message })
+        });
+        
+        const data = await response.json();
+        
+        // Display response
+        responseDiv.innerHTML = data.response.replace(/\n/g, '<br>');
+        
+        // Display metadata
+        document.getElementById('intentValue').textContent = data.intent;
+        document.getElementById('intentValue').className = 'meta-value intent-' + data.intent;
+        
+        document.getElementById('confidenceValue').textContent = Math.round(data.confidence * 100) + '%';
+        
+        document.getElementById('sentimentValue').textContent = data.sentiment;
+        document.getElementById('sentimentValue').className = 'meta-value sentiment-' + data.sentiment;
+        
+        document.getElementById('needsHumanValue').textContent = data.needsHuman ? 'Yes' : 'No';
+        document.getElementById('needsHumanValue').style.color = data.needsHuman ? '#ef4444' : '#10b981';
+        
+        metaDiv.style.display = 'grid';
+      } catch (error) {
+        responseDiv.innerHTML = '<span style="color: #ef4444;">Error: ' + error.message + '</span>';
+      }
+    }
+    
+    // Load AI stats
+    async function loadAIStats() {
+      try {
+        const response = await fetch('http://localhost:3000/api/ai/intents');
+        const data = await response.json();
+        
+        const stats = document.querySelectorAll('#aiStats .stat-value');
+        stats[0].textContent = data.intents.length;
+        stats[1].textContent = data.faqCount;
+        stats[2].textContent = data.smallTalkPatterns;
+      } catch (error) {
+        console.error('Error loading AI stats:', error);
+      }
+    }
+    
+    // Set up event listeners when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      // Test button click
+      document.getElementById('testButton').addEventListener('click', sendTestMessage);
+      
+      // Handle Enter key
+      document.getElementById('testMessage').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          sendTestMessage();
+        }
+      });
+      
+      // Test card clicks
+      const testCards = document.querySelectorAll('.test-card');
+      testCards.forEach((card) => {
+        card.addEventListener('click', () => {
+          const message = card.getAttribute('data-message');
+          testMessage(message);
+        });
+      });
+      
+      // Load stats on page load
+      loadAIStats();
+    });
+  </script>
+</body>
+</html>

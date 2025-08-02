@@ -8,6 +8,7 @@ const { createServer } = require('http');
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('./db');
+const aiService = require('./services/aiService');
 
 // Initialize Express app
 const app = express();
@@ -110,11 +111,18 @@ app.post('/api/chat', async (req, res) => {
     // Save user message
     await db.saveMessage(session.id, 'visitor', 'rest-api', message);
     
-    // Generate response (echo for now)
-    const responseText = `Echo: ${message}`;
+    // Get conversation history for context
+    const history = await db.getSessionMessages(session.id, 10);
+    
+    // Generate AI response
+    const aiResponse = await aiService.generateResponse(message, session.id, history);
+    const responseText = aiResponse.response;
     
     // Save bot response
-    await db.saveMessage(session.id, 'bot', 'echo-bot', responseText);
+    await db.saveMessage(session.id, 'bot', 'ai-assistant', responseText, {
+      intent: aiResponse.intent,
+      confidence: aiResponse.confidence
+    });
     
     res.json({
       id: uuidv4(),
@@ -194,6 +202,48 @@ app.get('/api/customers/:customerId/sessions', async (req, res) => {
   }
 });
 
+// AI intents endpoint - shows available AI responses
+app.get('/api/ai/intents', (req, res) => {
+  const intents = Object.keys(aiService.intents).map(key => ({
+    name: key,
+    patterns: aiService.intents[key].patterns.length,
+    responses: aiService.intents[key].responses.length
+  }));
+  
+  res.json({
+    intents,
+    faqCount: aiService.faqs.length,
+    smallTalkPatterns: aiService.smallTalk.patterns.length
+  });
+});
+
+// Test AI response endpoint
+app.post('/api/ai/test', async (req, res) => {
+  try {
+    const { message, sessionId = 'test-session' } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    
+    const response = await aiService.generateResponse(message, sessionId);
+    const sentiment = aiService.analyzeSentiment(message);
+    const needsHuman = aiService.needsHumanAgent(message, sentiment);
+    
+    res.json({
+      message,
+      response: response.response,
+      intent: response.intent,
+      confidence: response.confidence,
+      sentiment,
+      needsHuman
+    });
+  } catch (error) {
+    console.error('Error testing AI:', error);
+    res.status(500).json({ error: 'Failed to generate response' });
+  }
+});
+
 // WebSocket connection handling
 wss.on('connection', (ws, req) => {
   const connectionId = uuidv4();
@@ -226,12 +276,16 @@ wss.on('connection', (ws, req) => {
       switch (message.type) {
         case 'init':
           try {
+            console.log('Init received with:', { customerId: message.customerId, sessionId: message.sessionId });
+            
             // Get or create customer
             const customer = await db.getOrCreateCustomer(message.customerId);
+            console.log('Customer:', customer.id);
             
             // Get or create session
             const visitorId = message.sessionId || uuidv4();
             const session = await db.getOrCreateSessionByVisitor(customer.id, visitorId);
+            console.log('Session found/created:', session.id, 'Status:', session.status);
             
             // Update connection info
             connection.sessionId = session.id;
@@ -244,9 +298,11 @@ wss.on('connection', (ws, req) => {
               visitorId: visitorId
             });
             
-            // Send initialization confirmation with session history
+            // Get session history
             const history = await db.getSessionMessages(session.id);
+            console.log('Loading history:', history.length, 'messages');
             
+            // Send initialization confirmation with session history
             ws.send(JSON.stringify({
               type: 'initialized',
               sessionId: session.id,
@@ -281,8 +337,28 @@ wss.on('connection', (ws, req) => {
               message.content
             );
             
-            // Generate response (echo for now)
-            const responseText = `Echo: ${message.content}`;
+            // Get conversation history for context
+            const history = await db.getSessionMessages(connection.sessionId, 10);
+            
+            // Generate AI response
+            const aiResponse = await aiService.generateResponse(
+              message.content, 
+              connection.sessionId, 
+              history
+            );
+            
+            // Check if human agent is needed
+            const sentiment = aiService.analyzeSentiment(message.content);
+            const needsHuman = aiService.needsHumanAgent(message.content, sentiment);
+            
+            if (needsHuman) {
+              // Send notification that human is needed
+              ws.send(JSON.stringify({
+                type: 'notification',
+                message: '🤝 I\'ll connect you with a human agent right away. They\'ll be with you shortly!',
+                needsAgent: true
+              }));
+            }
             
             // Send typing indicator
             ws.send(JSON.stringify({
@@ -290,15 +366,23 @@ wss.on('connection', (ws, req) => {
               isTyping: true
             }));
             
-            // Simulate response delay
+            // Simulate response delay based on message length
+            const typingDelay = Math.min(Math.max(aiResponse.response.length * 20, 500), 2000);
+            
             setTimeout(async () => {
               try {
                 // Save bot response to database
                 const botMessage = await db.saveMessage(
                   connection.sessionId,
                   'bot',
-                  'echo-bot',
-                  responseText
+                  'ai-assistant',
+                  aiResponse.response,
+                  {
+                    intent: aiResponse.intent,
+                    confidence: aiResponse.confidence,
+                    sentiment: sentiment,
+                    needsHuman: needsHuman
+                  }
                 );
                 
                 // Send typing indicator off
@@ -311,19 +395,26 @@ wss.on('connection', (ws, req) => {
                 ws.send(JSON.stringify({
                   type: 'message',
                   id: botMessage.id,
-                  message: responseText,
-                  timestamp: botMessage.created_at
+                  message: aiResponse.response,
+                  timestamp: botMessage.created_at,
+                  metadata: {
+                    intent: aiResponse.intent,
+                    confidence: aiResponse.confidence
+                  }
                 }));
                 
                 // Save analytics
-                await db.saveAnalyticsEvent(connection.customerId, 'message_sent', {
+                await db.saveAnalyticsEvent(connection.customerId, 'ai_response', {
                   sessionId: connection.sessionId,
-                  messageCount: 1
+                  intent: aiResponse.intent,
+                  confidence: aiResponse.confidence,
+                  sentiment: sentiment,
+                  needsHuman: needsHuman
                 });
               } catch (error) {
                 console.error('Error sending bot response:', error);
               }
-            }, 1000);
+            }, typingDelay);
           } catch (error) {
             console.error('Error handling message:', error);
             ws.send(JSON.stringify({

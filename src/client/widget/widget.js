@@ -461,6 +461,15 @@
           showUnreadIndicator();
         }
         break;
+
+        case 'notification':
+        // Handle special notifications (like human agent needed)
+        addMessage(data.message, 'bot');
+        if (data.needsAgent) {
+          // Could add special styling or actions for agent requests
+          console.log('Neo LiveChat: Human agent requested');
+        }
+        break;
       
       case 'typing':
         if (data.isTyping) {
