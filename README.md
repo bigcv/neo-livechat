@@ -4,7 +4,7 @@ An enterprise-ready, AI-powered live chat platform that businesses can integrate
 
 ## 🚀 Features
 
-- **AI-Powered Responses**: Intelligent chat responses using OpenAI/Claude API
+- **AI-Powered Responses**: Intelligent chat responses using our AI trained with your custom Messages
 - **Real-time Communication**: WebSocket-based live chat
 - **Easy Integration**: Simple JavaScript widget for any website
 - **Multi-tenant Architecture**: Secure isolation between customers
