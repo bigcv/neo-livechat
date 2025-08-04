@@ -3,12 +3,17 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const cookieParser = require('cookie-parser'); // NEW: For handling cookies
 const path = require('path');
 const { createServer } = require('http');
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('./db');
 const aiService = require('./services/aiService');
+
+// NEW: Import authentication routes and middleware
+const authRoutes = require('./routes/auth');
+const { authenticateApiKey } = require('./middleware/auth');
 
 // Initialize Express app
 const app = express();
@@ -40,6 +45,7 @@ app.use(cors({
 }));
 
 app.use(compression());
+app.use(cookieParser()); // NEW: Parse cookies
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -49,13 +55,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files - IMPORTANT: Add these lines
+// Serve static files
 app.use('/widget', express.static(path.join(__dirname, '../../src/client/widget')));
 app.use('/widget', express.static(path.join(__dirname, '../../public/widget')));
 app.use(express.static(path.join(__dirname, '../../public')));
 
 // Store active WebSocket connections
 const connections = new Map();
+
+// NEW: Authentication routes
+app.use('/api/auth', authRoutes);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
@@ -80,23 +89,22 @@ app.get('/api', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
+      auth: '/api/auth',
       chat: '/api/chat',
       websocket: 'ws://localhost:3000/ws'
     }
   });
 });
 
-// Chat endpoint (REST fallback)
-app.post('/api/chat', async (req, res) => {
+// Chat endpoint (REST fallback) - NOW WITH API KEY AUTHENTICATION
+app.post('/api/chat', authenticateApiKey, async (req, res) => {
   try {
-    const { message, sessionId, customerId } = req.body;
+    const { message, sessionId } = req.body;
+    const customerId = req.customer.id; // From API key authentication
     
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
-    
-    // Get or create customer
-    const customer = await db.getOrCreateCustomer(customerId);
     
     // Get or create session
     let session;
@@ -105,7 +113,7 @@ app.post('/api/chat', async (req, res) => {
     }
     if (!session) {
       const visitorId = sessionId || uuidv4();
-      session = await db.createChatSession(customer.id, visitorId);
+      session = await db.createChatSession(customerId, visitorId);
     }
     
     // Save user message
@@ -127,7 +135,7 @@ app.post('/api/chat', async (req, res) => {
     res.json({
       id: uuidv4(),
       sessionId: session.id,
-      customerId: customer.id,
+      customerId: customerId,
       message: message,
       response: responseText,
       timestamp: new Date().toISOString()
@@ -138,24 +146,51 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Widget configuration endpoint
-app.get('/api/widget/config', (req, res) => {
-  const { customerId } = req.query;
-  
-  res.json({
-    customerId: customerId || 'demo',
-    theme: {
-      primaryColor: '#0066cc',
-      position: 'bottom-right',
-      greeting: 'Hi! How can I help you today?'
-    },
-    features: {
-      fileUpload: false,
-      emoji: true,
-      typing: true,
-      sound: true
-    }
-  });
+// Widget configuration endpoint - NOW WITH API KEY AUTHENTICATION
+app.get('/api/widget/config', authenticateApiKey, async (req, res) => {
+  try {
+    const customerId = req.customer.id;
+    
+    // Get customer's widget configuration from database
+    const result = await db.pool.query(
+      'SELECT * FROM widget_configs WHERE customer_id = $1',
+      [customerId]
+    );
+    
+    const config = result.rows[0] || {};
+    
+    res.json({
+      customerId: customerId,
+      theme: {
+        primaryColor: config.theme?.primaryColor || '#0066cc',
+        position: config.position || 'bottom-right',
+        greeting: config.greeting_message || 'Hi! How can I help you today?'
+      },
+      features: {
+        fileUpload: false,
+        emoji: true,
+        typing: true,
+        sound: true
+      }
+    });
+  } catch (error) {
+    console.error('Widget config error:', error);
+    // Fallback to default config if there's an error
+    res.json({
+      customerId: req.customer.id,
+      theme: {
+        primaryColor: '#0066cc',
+        position: 'bottom-right',
+        greeting: 'Hi! How can I help you today?'
+      },
+      features: {
+        fileUpload: false,
+        emoji: true,
+        typing: true,
+        sound: true
+      }
+    });
+  }
 });
 
 // Get chat history
@@ -490,6 +525,7 @@ server.listen(PORT, '0.0.0.0', () => {
 📍 HTTP: http://localhost:${PORT}
 📍 WebSocket: ws://localhost:${PORT}/ws
 📍 Health: http://localhost:${PORT}/health
+📍 Auth: http://localhost:${PORT}/api/auth
 📍 Test Page: http://localhost:${PORT}/test.html
 🌍 Environment: ${process.env.NODE_ENV || 'development'}
   `);

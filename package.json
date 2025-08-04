@@ -13,32 +13,40 @@
     "db:migrate": "node scripts/migrate.js",
     "lint": "eslint src/"
   },
-  "keywords": ["chat", "ai", "saas", "customer-support", "websocket","neo"],
+  "keywords": [
+    "chat",
+    "ai",
+    "saas",
+    "customer-support",
+    "websocket",
+    "neo"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "helmet": "^7.0.0",
-    "dotenv": "^16.3.1",
-    "ws": "^8.14.2",
-    "pg": "^8.11.3",
-    "redis": "^4.6.10",
-    "ioredis": "^5.3.2",
-    "jsonwebtoken": "^9.0.2",
     "bcrypt": "^5.1.1",
-    "uuid": "^9.0.1",
-    "joi": "^17.11.0",
-    "winston": "^3.11.0",
     "compression": "^1.7.4",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^7.0.0",
+    "ioredis": "^5.3.2",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "openai": "^4.20.0",
+    "pg": "^8.11.3",
     "rate-limiter-flexible": "^3.0.0",
-    "openai": "^4.20.0"
+    "redis": "^4.6.10",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1",
-    "jest": "^29.7.0",
+    "@types/node": "^20.8.0",
     "eslint": "^8.53.0",
-    "prettier": "^3.1.0",
-    "@types/node": "^20.8.0"
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.1",
+    "prettier": "^3.1.0"
   }
 }
