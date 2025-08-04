@@ -35,7 +35,7 @@ An enterprise-ready, AI-powered live chat platform that businesses can integrate
 
 ### 1. Clone the repository
 ```bash
-git clone git@github.com:yourusername/ai-chat-platform.git
+git clone git@github.com:yourusername/neo-livechat.git
 cd ai-chat-platform
 ```
 
