@@ -113,6 +113,17 @@ npm test
 ```bash
 npm run db:migrate
 ```
+### Verify Installation
+```
+# Check API health
+curl http://localhost:3000/health
+
+# Test authentication
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123","name":"Test User"}'
+
+```
 
 ### Linting
 ```bash
